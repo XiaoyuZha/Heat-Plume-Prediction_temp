@@ -37,8 +37,8 @@ def prepare_data(settings:SettingsTraining, paths: Union[Paths1HP, Paths2HP], in
             prepare_dataset_for_1st_stage(paths, settings, additional_input=additional_input)
         print(f"Dataset prepared ({paths.dataset_1st_prep_path})")
     else:
-        if not paths.dataset_1st_prep_path.exists() or not paths.dataset_1st_prep_path: # TODO settings.case == "test"?
-            prepare_dataset_for_2nd_stage(paths, settings)
+        #if not paths.dataset_1st_prep_path.exists() or not paths.dataset_1st_prep_path: # TODO settings.case == "test"?
+        prepare_dataset_for_2nd_stage(paths, settings)
         settings.inputs = inputs_2hp
         print(f"Dataset prepared ({paths.datasets_boxes_prep_path})")
 

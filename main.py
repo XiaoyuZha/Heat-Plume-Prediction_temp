@@ -248,7 +248,7 @@ if __name__ == "__main__":
         model = run(settings)
     else:    
         settings = prepare_data_and_paths(settings)
-        model = run(settings)
+        #model = run(settings)
 
 
     if args.save_inference:

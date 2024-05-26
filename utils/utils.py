@@ -29,7 +29,9 @@ def beep(case:str="end"):
         os.system(f"play -nq -t alsa synth {duration} sine {freq}")
 
 def re_split_number_text(input: str) -> List:
+    print(input)
     match = re.match(r"([a-z]+)([0-9]+)", input, re.I)
+    print(match)
     if match:
         items = match.groups()
     return items

@@ -42,7 +42,7 @@ def set_paths_1hpnn(dataset_name: str, inputs:str = "", dataset_prep:str = "", p
 
     return Paths1HP(dataset_raw_path, dataset_prepared_full_path), destination_dir
 
-def set_paths_2hpnn(dataset_name: str, preparation_case: str, model_name: str = None, dataset_prep:str = None, paths_file:str = "paths.yaml")-> typing.Tuple[Paths2HP, str, pathlib.Path]:
+def set_paths_2hpnn(dataset_name: str, preparation_case: str, model_name: str = "current_unet_benchmark_dataset_2d_100datapoints_grad_p_v6", dataset_prep:str = None, paths_file:str = "paths.yaml")-> typing.Tuple[Paths2HP, str, pathlib.Path]:
     
     if not os.path.exists(paths_file):
         raise FileNotFoundError(f"{paths_file} not found")
@@ -68,7 +68,7 @@ def set_paths_2hpnn(dataset_name: str, preparation_case: str, model_name: str = 
         dataset_model_trained_with_prep_path = model_1hp_path
     
     dataset_raw_path = datasets_raw_domain_dir / dataset_name
-    inputs = re_split_number_text(str(preparation_case))[0]
+    inputs = str(preparation_case)
     dataset_1st_prep_path = datasets_prepared_domain_dir / f"{dataset_name} inputs_{inputs}"
     if dataset_prep is None:
         dataset_prep_2hp_path = f"{dataset_name} inputs_{preparation_case} boxes"

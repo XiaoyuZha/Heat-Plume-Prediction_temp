@@ -79,7 +79,7 @@ def prepare_dataset(paths: Union[Paths1HP, Paths2HP], settings: SettingsTraining
     dataset_prepared_path.mkdir(parents=True, exist_ok=True)
     (dataset_prepared_path / "Inputs").mkdir(parents=True, exist_ok=True)
     (dataset_prepared_path / "Labels").mkdir(parents=True, exist_ok=True)
-
+    print(settings.len_box)
     transforms = get_transforms(reduce_to_2D=True, reduce_to_2D_xy=True, power2trafo=power2trafo, cutlengthtrafo=cutlengthtrafo, box_length=settings.len_box, problem=settings.problem)
     inputs = expand_property_names(settings.inputs)
     time_init = "   0 Time  0.00000E+00 y"
