@@ -188,7 +188,8 @@ class Domain:
                 logging.info(
                     f"HP BOX at {pos_hp} is with ({corner_ll}, {corner_ur}) in domain"
                 )
-            except:
+            except Exception as e:
+                print(e)
                 logging.warning(f"BOX of HP {idx} at {pos_hp} is not in domain")
                 
         return hp_boxes

@@ -17,7 +17,7 @@ def load_yaml(path: pathlib.Path, file_name="settings", **kwargs) -> Dict:
 
 def save_yaml(settings: Dict, path: str, name_file: str = "settings"):
     path = pathlib.Path(path)
-    with open(path / f"{name_file}.yaml", "w") as file:
+    with open(path / f"{name_file}.yaml", "w+") as file:
         yaml.dump(settings, file)
 
 def get_run_ids(dir: pathlib.Path) -> List[int]:

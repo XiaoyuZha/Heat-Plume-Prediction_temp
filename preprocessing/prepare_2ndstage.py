@@ -36,7 +36,9 @@ def prepare_dataset_for_2nd_stage(paths: Paths2HP, settings:SettingsTraining):
 # prepare domain dataset if not yet done
     ## load model from 1st stage
     time_start_prep_domain = time.perf_counter()
-    print(settings.device)
+    model_1HP = UNet(in_channels=len(settings.inputs)).float()
+    print(paths.model_1hp_path)
+    model_1HP.load(paths.model_1hp_path, map_location=settings.device)
     
     ## prepare 2hp dataset for 1st stage
     if not os.path.exists(paths.dataset_1st_prep_path):        
@@ -63,12 +65,12 @@ def prepare_dataset_for_2nd_stage(paths: Paths2HP, settings:SettingsTraining):
             continue
 
         single_hps = domain.extract_hp_boxes(settings.device)
-        for hp in single_hps:
-        #     # save hp
-            hp.save(run_id=run_id+"_alt", dir=paths.datasets_boxes_prep_path, inputs_all=None)
-        print(f"Domain prepared ({paths.datasets_boxes_prep_path})")
+        #for hp in single_hps:
+        #   #save hp
+        #   hp.save(run_id=run_id+"_alt", dir=paths.datasets_boxes_prep_path, inputs_all=None)
+        #print(f"Domain prepared ({paths.datasets_boxes_prep_path})")
         # apply learned NN to predict the heat plumes
-        #single_hps, avg_time_inference_1hp = prepare_hp_boxes(paths, model_1HP, single_hps, domain, run_id, avg_time_inference_1hp, save_bool=True)
+        single_hps, avg_time_inference_1hp = prepare_hp_boxes(paths, model_1HP, single_hps, domain, run_id, avg_time_inference_1hp, save_bool=True)
         
     time_end = time.perf_counter()
     avg_inference_times = avg_time_inference_1hp / len(list_runs)
@@ -125,6 +127,7 @@ def prepare_hp_boxes(paths:Paths2HP, model_1HP:UNet, single_hps:List[HeatPumpBox
     for hp in single_hps:
         hp.primary_temp_field = domain.norm(hp.primary_temp_field, property="Temperature [C]")
         hp.other_temp_field = domain.norm(hp.other_temp_field, property="Temperature [C]")
+        print(f"mean temp {hp.other_temp_field.mean()}")
         inputs = stack([hp.inputs[0],hp.inputs[1],hp.inputs[2],hp.inputs[3], hp.other_temp_field])
         if save_bool:
             hp.save(run_id=run_id, dir=paths.datasets_boxes_prep_path, inputs_all=inputs,)
