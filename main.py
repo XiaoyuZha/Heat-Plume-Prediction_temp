@@ -110,7 +110,7 @@ def run(settings: SettingsTraining, settings_val: SettingsTraining = None, setti
         # model = Encoder(in_channels=input_channels).float()
 
     if settings.case in ["test", "finetune"]:
-        model.load(settings.model, settings.device)
+        model.load(settings.model, map_location=settings.device)
     model.to(settings.device)
 
     if settings.case in ["train", "finetune"]:
@@ -248,7 +248,7 @@ if __name__ == "__main__":
         model = run(settings)
     else:    
         settings = prepare_data_and_paths(settings)
-        #model = run(settings)
+        model = run(settings)
 
 
     if args.save_inference:
