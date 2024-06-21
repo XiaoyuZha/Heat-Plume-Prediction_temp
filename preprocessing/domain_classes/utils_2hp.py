@@ -9,13 +9,9 @@ from utils.utils_data import save_yaml
 
 def save_config_of_separate_inputs(domain_info, path, name_file="info"):
     # ATTENTION! Lots of hardcoding
-    temperature_info = domain_info["Labels"]["Temperature [C]"]
-    shortened_input = {
-        "Temperature prediction (1st HP) [C]": temperature_info.copy(),
-        "Temperature prediction (other HPs) [C]": temperature_info.copy(),
-    }
-    shortened_input["Temperature prediction (1st HP) [C]"]["index"] = 0
-    shortened_input["Temperature prediction (other HPs) [C]"]["index"] = 1
+    shortened_input = domain_info["Inputs"].copy()
+    shortened_input["Temperature prediction (other HPs) [C]"] = domain_info["Labels"]["Temperature [C]"].copy()
+    shortened_input["Temperature prediction (other HPs) [C]"]["index"] = 4
     shortened_infos = {
         "Inputs": shortened_input,
         "Labels": domain_info["Labels"],
@@ -23,6 +19,7 @@ def save_config_of_separate_inputs(domain_info, path, name_file="info"):
         "CellsNumberPrior": domain_info["CellsNumberPrior"],
         "CellsSize": domain_info["CellsSize"],
     }
+    print(domain_info)
     save_yaml(shortened_infos, path, name_file)
 
 def save_config_of_merged_inputs(separate_info, path, name_file="info"):
