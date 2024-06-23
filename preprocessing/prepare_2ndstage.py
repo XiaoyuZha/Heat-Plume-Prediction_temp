@@ -44,6 +44,7 @@ def prepare_dataset_for_2nd_stage(paths: Paths2HP, settings:SettingsTraining):
     if not os.path.exists(paths.dataset_1st_prep_path):        
         # norm with data from dataset that NN was trained with!!
         with open(paths.dataset_model_trained_with_prep_path / "info.yaml", "r") as file:
+            print(paths.dataset_model_trained_with_prep_path)
             info = yaml.safe_load(file)
             print(info)
         prepare_dataset(paths, settings, info=info, power2trafo=False) # for using unet on whole domain required: power2trafo=True

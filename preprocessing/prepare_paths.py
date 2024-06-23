@@ -42,7 +42,7 @@ def set_paths_1hpnn(dataset_name: str, inputs:str = "", dataset_prep:str = "", p
 
     return Paths1HP(dataset_raw_path, dataset_prepared_full_path), destination_dir
 
-def set_paths_2hpnn(dataset_name: str, preparation_case: str, model_name: str = "current_unet_benchmark_dataset_2d_100datapoints_grad_p_v6", dataset_prep:str = None, paths_file:str = "paths.yaml")-> typing.Tuple[Paths2HP, str, pathlib.Path]:
+def set_paths_2hpnn(dataset_name: str, preparation_case: str, model_name: str = "new_model", dataset_prep:str = None, paths_file:str = "paths.yaml")-> typing.Tuple[Paths2HP, str, pathlib.Path]:
     
     if not os.path.exists(paths_file):
         raise FileNotFoundError(f"{paths_file} not found")
