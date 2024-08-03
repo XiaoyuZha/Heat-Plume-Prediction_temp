@@ -170,7 +170,6 @@ class Domain:
             size_hp_box = size_hp
         hp_boxes = []
         pos_hps = stack(list(where(material_ids == max(material_ids))), dim=0).T
-        print(pos_hps)
         names_inputs = [self.get_name_from_index(i) for i in range(self.inputs.shape[0])]
 
         for idx in tqdm(range(len(pos_hps))):
@@ -200,8 +199,6 @@ class Domain:
                 corner_ll = (pos_hp - distance_hp_corner) # corner lower left
                 corner_ur = (pos_hp + size_hp_box - distance_hp_corner)
                 offset_ll = [0,0]
-                print(corner_ll)
-                print(corner_ur)
                 for i in range(len(corner_ll)):
                     if corner_ll[i] < 0:
                         offset_ll[i] = corner_ll[i] * -1
@@ -220,14 +217,9 @@ class Domain:
                 for label in range(part_label.shape[0]):
                     tmp_label[label] = ones(size_hp_box[0],size_hp_box[1]) * min(part_label[label]).item()
                 if (offset_ll == [0,0]):
-                    print(offset_ll)
-                    print(offset_ur)
-                    print(tmp_input.shape)
                     tmp_input[:,  : offset_ur[0], : offset_ur[1]] = part_input.clone().detach()
                     tmp_label[:, : offset_ur[0], : offset_ur[1]] = part_label.clone().detach()
                 else:
-                    print(offset_ll)
-                    print(tmp_input.shape)
                     tmp_input[:, offset_ll[0] :, offset_ll[1] :] = part_input.clone().detach()
                     tmp_label[:, offset_ll[0] :, offset_ll[1] :] = part_label.clone().detach()
                 
