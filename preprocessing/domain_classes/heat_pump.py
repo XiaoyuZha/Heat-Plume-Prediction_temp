@@ -83,7 +83,7 @@ class HeatPumpBox:
         if alt_label is None:
             save(self.label, f"{dir}/Labels/{run_id}HP_{self.id}.pt")
         else:
-            save(alt_label, f"{dir}/Labels/{run_id}HP_{self.id}.pt")
+            save(unsqueeze(alt_label,0), f"{dir}/Labels/{run_id}HP_{self.id}.pt")
 
     def plot_and_reverse_norm(self, domain: "Domain", dir: pathlib.Path, data_to_plot: List[str] = None, names: List[str] = None, format_fig: str = "png"):
         if data_to_plot == None:
