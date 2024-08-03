@@ -136,7 +136,6 @@ def prepare_hp_boxes(paths:Paths2HP, model_1HP:UNet, single_hps:List[HeatPumpBox
         end_col = start_col + small_hp.primary_temp_field.shape[1]
         large_hp.primary_temp_field = large_hp.inputs[4]
         large_hp.primary_temp_field[start_row:end_row,start_col:end_col] = small_hp.primary_temp_field
-        print(large_hp.inputs.shape)
         large_hp.save(run_id="-"+run_id, dir=paths.datasets_boxes_prep_path/"large_size", alt_label=large_hp.primary_temp_field.clone().detach(),)
         current += 1
 
@@ -146,10 +145,9 @@ def prepare_hp_boxes(paths:Paths2HP, model_1HP:UNet, single_hps:List[HeatPumpBox
     for large_hp in large_hps:
         large_hp.primary_temp_field = domain.norm(large_hp.primary_temp_field, property="Temperature [C]")
         large_hp.other_temp_field = domain.norm(large_hp.other_temp_field, property="Temperature [C]")
-        print(large_hp.inputs.shape)
         inputs = stack([large_hp.inputs[0],large_hp.inputs[1],large_hp.inputs[2],large_hp.inputs[3], large_hp.other_temp_field])
         if save_bool:
-            hp.save(run_id=run_id, dir=paths.datasets_boxes_prep_path/"large_size", inputs_all=inputs,)
+            large_hp.save(run_id=run_id, dir=paths.datasets_boxes_prep_path/"large_size", inputs_all=inputs,)
 
     for hp in single_hps:
         hp.get_other_temp_field(single_hps)
