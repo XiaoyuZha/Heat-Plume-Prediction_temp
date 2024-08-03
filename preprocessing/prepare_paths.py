@@ -64,7 +64,7 @@ def set_paths_2hpnn(dataset_name: str, preparation_case: str, model_name: str = 
                 elif "dataset" in path.name:
                     dataset_model_trained_with_prep_path = prepared_1hp_dir / path.name
     else:
-        model_1hp_path = pathlib.Path(paths["models_1hp_dir"]) / model_name
+        model_1hp_path = pathlib.Path(paths["models_1hp_dir"])/"1hpnn" / model_name
         dataset_model_trained_with_prep_path = model_1hp_path
     
     dataset_raw_path = datasets_raw_domain_dir / dataset_name

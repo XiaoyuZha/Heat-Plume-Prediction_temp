@@ -74,6 +74,7 @@ def prepare_dataset(paths: Union[Paths1HP, Paths2HP], settings: SettingsTraining
             TODO make g (pressure gradient cell-size independent?)
     """
     time_start = time.perf_counter()
+    print(paths.raw_path)
     check_for_dataset(paths.raw_path)
     dataset_prepared_path = pathlib.Path(paths.dataset_1st_prep_path)
     dataset_prepared_path.mkdir(parents=True, exist_ok=True)

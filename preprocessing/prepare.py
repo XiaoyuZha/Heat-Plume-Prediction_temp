@@ -19,7 +19,7 @@ def prepare_paths_and_settings(settings:SettingsTraining):
     else:
         paths: Paths2HP
         inputs_2hp = settings.inputs
-        paths, settings.inputs, destination_dir = set_paths_2hpnn(settings.dataset_raw, settings.inputs, dataset_prep = settings.dataset_prep,)
+        paths, settings.inputs, destination_dir = set_paths_2hpnn(settings.dataset_raw, settings.inputs,model_name=settings.model, dataset_prep = settings.dataset_prep,)
         settings.dataset_prep = paths.datasets_boxes_prep_path
 
     settings.make_destination_path(destination_dir)

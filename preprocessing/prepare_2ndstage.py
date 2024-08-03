@@ -6,7 +6,7 @@ import time
 from typing import List
 
 import yaml
-from torch import Tensor, load, save, stack, unsqueeze
+from torch import Tensor, load, save, stack, unsqueeze, tensor
 from tqdm.auto import tqdm
 
 from preprocessing.domain_classes.domain import Domain
@@ -44,9 +44,7 @@ def prepare_dataset_for_2nd_stage(paths: Paths2HP, settings:SettingsTraining):
     if not os.path.exists(paths.dataset_1st_prep_path):        
         # norm with data from dataset that NN was trained with!!
         with open(paths.dataset_model_trained_with_prep_path / "info.yaml", "r") as file:
-            print(paths.dataset_model_trained_with_prep_path)
             info = yaml.safe_load(file)
-            print(info)
         prepare_dataset(paths, settings, info=info, power2trafo=False) # for using unet on whole domain required: power2trafo=True
     print(f"Domain prepared ({paths.dataset_1st_prep_path})")
 
@@ -123,16 +121,44 @@ def prepare_hp_boxes(paths:Paths2HP, model_1HP:UNet, single_hps:List[HeatPumpBox
         hp.primary_temp_field = domain.reverse_norm(hp.primary_temp_field, property="Temperature [C]")
     avg_time_inference_1hp /= len(single_hps)
 
+    distance_hp_large = tensor([33,46])
+    size_hp_large = tensor([256,64])
+    large_hps = domain.extract_hp_boxes(size_hp=size_hp_large,distance_hp=distance_hp_large)
+    current = 0
+    for large_hp in large_hps:
+        small_hp = single_hps[current]
+        if small_hp.id != large_hp.id:
+            print("skipped hp due to not matching id (most likely large box outside boundary)")
+            continue
+
+        start_row = large_hp.pos[0] - small_hp.pos[0]
+        end_row = start_row + small_hp.primary_temp_field.shape[0]
+        start_col = large_hp.pos[1] - small_hp.pos[1]
+        end_col = start_col + small_hp.primary_temp_field.shape[1]
+        large_hp.primary_temp_field = large_hp.inputs[4]
+        large_hp.primary_temp_field[start_row:end_row,start_col:end_col] = small_hp.primary_temp_field
+        large_hp.save(run_id="-"+run_id, dir=paths.datasets_boxes_prep_path/"large_size", alt_label=large_hp.primary_temp_field.clone().detach(),)
+        current += 1
+
+    for large_hp in large_hps:
+        large_hp.get_other_temp_field(large_hps)
+
+    for large_hp in large_hps:
+        large_hp.primary_temp_field = domain.norm(large_hp.primary_temp_field, property="Temperature [C]")
+        large_hp.other_temp_field = domain.norm(large_hp.other_temp_field, property="Temperature [C]")
+        inputs = stack([large_hp.inputs[0],large_hp.inputs[1],large_hp.inputs[2],large_hp.inputs[3], large_hp.other_temp_field])
+        if save_bool:
+            hp.save(run_id=run_id, dir=paths.datasets_boxes_prep_path/"large_size", inputs_all=inputs,)
+
     for hp in single_hps:
         hp.get_other_temp_field(single_hps)
 
     for hp in single_hps:
         hp.primary_temp_field = domain.norm(hp.primary_temp_field, property="Temperature [C]")
         hp.other_temp_field = domain.norm(hp.other_temp_field, property="Temperature [C]")
-        print(f"mean temp {hp.other_temp_field.mean()}")
         inputs = stack([hp.inputs[0],hp.inputs[1],hp.inputs[2],hp.inputs[3], hp.other_temp_field])
         if save_bool:
-            hp.save(run_id=run_id, dir=paths.datasets_boxes_prep_path, inputs_all=inputs,)
+            hp.save(run_id=run_id, dir=paths.datasets_boxes_prep_path/"normal_size", inputs_all=inputs,)
     return single_hps, avg_time_inference_1hp
 
 def merge_inputs_for_2HPNN(path_separate_inputs:pathlib.Path, path_merged_inputs:pathlib.Path, stitching_method:str="max"):

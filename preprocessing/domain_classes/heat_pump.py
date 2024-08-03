@@ -69,7 +69,7 @@ class HeatPumpBox:
                 end2 = tensor(self.other_temp_field.shape) - maximum(-rel_pos, zeros2)
                 self.other_temp_field[offset2[0] : end2[0], offset2[1] : end2[1]] = maximum(self.other_temp_field[offset2[0] : end2[0], offset2[1] : end2[1]], tmp_2nd_hp)
 
-    def save(self, run_id: str = "", dir: str = "HP-Boxes", additional_inputs: tensor = None, inputs_all: tensor = None,):
+    def save(self, run_id: str = "", dir: str = "HP-Boxes", additional_inputs: tensor = None, inputs_all: tensor = None, alt_label: tensor = None,):
         pathlib.Path(dir, "Inputs").mkdir(parents=True, exist_ok=True)
         pathlib.Path(dir, "Labels").mkdir(parents=True, exist_ok=True)
         # TODO NEXT
@@ -80,7 +80,10 @@ class HeatPumpBox:
         else:
             inputs = self.inputs
         save(inputs, f"{dir}/Inputs/{run_id}HP_{self.id}.pt")
-        save(self.label, f"{dir}/Labels/{run_id}HP_{self.id}.pt")
+        if alt_label is None:
+            save(self.label, f"{dir}/Labels/{run_id}HP_{self.id}.pt")
+        else:
+            save(alt_label, f"{dir}/Labels/{run_id}HP_{self.id}.pt")
 
     def plot_and_reverse_norm(self, domain: "Domain", dir: pathlib.Path, data_to_plot: List[str] = None, names: List[str] = None, format_fig: str = "png"):
         if data_to_plot == None:
