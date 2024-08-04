@@ -120,7 +120,7 @@ def prepare_hp_boxes(paths:Paths2HP, model_1HP:UNet, single_hps:List[HeatPumpBox
         hp.primary_temp_field = domain.reverse_norm(hp.primary_temp_field, property="Temperature [C]")
     avg_time_inference_1hp /= len(single_hps)
 
-    distance_hp_large = tensor([33,46])
+    distance_hp_large = tensor([domain.info["PositionHPPrior"][1],33])
     size_hp_large = tensor([256,64])
     large_hps = domain.extract_hp_boxes(size_hp=size_hp_large,distance_hp=distance_hp_large)
     current = 0
@@ -130,12 +130,13 @@ def prepare_hp_boxes(paths:Paths2HP, model_1HP:UNet, single_hps:List[HeatPumpBox
             print("skipped hp due to not matching id (most likely large box outside boundary)")
             continue
 
-        start_row = large_hp.pos[0] - small_hp.pos[0]
+        #TODO make length more flexible
+        start_row = large_hp.dist_corner_hp[0] - small_hp.dist_corner_hp[0]
         end_row = start_row + small_hp.primary_temp_field.shape[0]
-        start_col = large_hp.pos[1] - small_hp.pos[1]
+        start_col = large_hp.dist_corner_hp[1] - small_hp.dist_corner_hp[1]
         end_col = start_col + small_hp.primary_temp_field.shape[1]
-        large_hp.primary_temp_field = large_hp.inputs[4]
-        large_hp.primary_temp_field[start_row:end_row,start_col:end_col] = small_hp.primary_temp_field
+        large_hp.primary_temp_field = large_hp.inputs[4].clone().detach()
+        large_hp.primary_temp_field[start_row:end_row,start_col:end_col] = domain.norm(small_hp.primary_temp_field.clone().detach(),property="Temperature [C]")
         large_hp.save(run_id="-"+run_id, dir=paths.datasets_boxes_prep_path/"large_size", alt_label=large_hp.primary_temp_field.clone().detach(),)
         current += 1
 
