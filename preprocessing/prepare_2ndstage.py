@@ -6,7 +6,7 @@ import time
 from typing import List
 
 import yaml
-from torch import Tensor, load, save, stack, unsqueeze, tensor
+from torch import Tensor, load, save, stack, unsqueeze, tensor, max
 from tqdm.auto import tqdm
 
 from preprocessing.domain_classes.domain import Domain
@@ -138,6 +138,7 @@ def prepare_hp_boxes(paths:Paths2HP, model_1HP:UNet, single_hps:List[HeatPumpBox
         large_hp.primary_temp_field = large_hp.inputs[4].clone().detach()
         large_hp.primary_temp_field[start_row:end_row,start_col:end_col] = domain.norm(small_hp.primary_temp_field.clone().detach(),property="Temperature [C]")
         large_hp.save(run_id="-"+run_id, dir=paths.datasets_boxes_prep_path/"large_size", alt_label=large_hp.primary_temp_field.clone().detach(),)
+        large_hp.other_temp_field = domain.norm(large_hp.other_temp_field, property="Temperature [C]")
         current += 1
 
     for large_hp in large_hps:
@@ -145,7 +146,7 @@ def prepare_hp_boxes(paths:Paths2HP, model_1HP:UNet, single_hps:List[HeatPumpBox
 
     for large_hp in large_hps:
         large_hp.primary_temp_field = domain.norm(large_hp.primary_temp_field, property="Temperature [C]")
-        large_hp.other_temp_field = domain.norm(large_hp.other_temp_field, property="Temperature [C]")
+        #large_hp.other_temp_field = domain.norm(large_hp.other_temp_field, property="Temperature [C]")
         inputs = stack([large_hp.inputs[0],large_hp.inputs[1],large_hp.inputs[2],large_hp.inputs[3], large_hp.other_temp_field])
         if save_bool:
             large_hp.save(run_id=run_id, dir=paths.datasets_boxes_prep_path/"large_size", inputs_all=inputs,)

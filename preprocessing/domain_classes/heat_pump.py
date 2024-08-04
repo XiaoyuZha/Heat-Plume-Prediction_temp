@@ -6,7 +6,7 @@ from typing import List
 import matplotlib.pyplot as plt
 import numpy as np
 from torch import long as torch_long
-from torch import maximum, ones, save, tensor, unsqueeze, zeros_like, zeros, is_tensor, load, cat
+from torch import maximum, ones, save, tensor, unsqueeze, zeros_like, zeros, is_tensor, load, cat, max
 
 from postprocessing.visualization import _aligned_colorbar
 from preprocessing.data_stuff.transforms import SignedDistanceTransform
