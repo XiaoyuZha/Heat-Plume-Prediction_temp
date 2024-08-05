@@ -18,6 +18,8 @@ from preprocessing.prepare_1ststage import prepare_dataset
 from preprocessing.prepare_paths import Paths2HP
 from processing.networks.unet import UNet
 from utils.utils_data import SettingsTraining
+import itertools
+from copy import deepcopy
 
 
 def prepare_dataset_for_2nd_stage(paths: Paths2HP, settings:SettingsTraining):
@@ -113,38 +115,90 @@ def load_and_prepare_for_2nd_stage(paths: Paths2HP, inputs_1hp: str, run_id: int
 def prepare_hp_boxes(paths:Paths2HP, model_1HP:UNet, single_hps:List[HeatPumpBox], domain:Domain, run_id:int, avg_time_inference_1hp:float=0, save_bool:bool=True):
     hp: HeatPumpBox
 
+    #TODO make length more flexible
+    #TODO adjust code for more than 2 heat pumps
     distance_hp_large = tensor([domain.info["PositionHPPrior"][1],33])
     size_hp_large = tensor([256,64])
-
-    for hp in single_hps:
-        time_start_run_1hp = time.perf_counter()
-        hp.primary_temp_field = hp.apply_nn(model_1HP)
-        avg_time_inference_1hp += time.perf_counter() - time_start_run_1hp
-        hp.primary_temp_field = domain.reverse_norm(hp.primary_temp_field, property="Temperature [C]")
-    avg_time_inference_1hp /= len(single_hps)
-
     large_hps = domain.extract_hp_boxes(size_hp=size_hp_large,distance_hp=distance_hp_large)
-    current = 0
-    for large_hp in large_hps:
-        small_hp = single_hps[current]
-        if small_hp.id != large_hp.id:
-            print("skipped hp due to not matching id (most likely large box outside boundary)")
-            continue
 
-        #TODO make length more flexible
-        #TODO adjust code for more than 2 heat pumps
-        start_row = large_hp.dist_corner_hp[0] - small_hp.dist_corner_hp[0]
-        end_row = start_row + small_hp.primary_temp_field.shape[0]
-        start_col = large_hp.dist_corner_hp[1] - small_hp.dist_corner_hp[1]
-        end_col = start_col + small_hp.primary_temp_field.shape[1]
-        large_hp.primary_temp_field = large_hp.inputs[4].clone().detach()
-        large_hp.primary_temp_field[start_row:end_row,start_col:end_col] = domain.norm(small_hp.primary_temp_field.clone().detach(),property="Temperature [C]")
-        large_hp.save(run_id="-"+run_id, dir=paths.datasets_boxes_prep_path/"large_size", alt_label=large_hp.primary_temp_field.clone().detach(),)
-        large_hp.other_temp_field = domain.norm(large_hp.other_temp_field, property="Temperature [C]")
-        current += 1
+    start_row = large_hp.dist_corner_hp[0] - small_hp.dist_corner_hp[0]
+    end_row = start_row + small_hp.primary_temp_field.shape[0]
+    start_col = large_hp.dist_corner_hp[1] - small_hp.dist_corner_hp[1]
+    end_col = start_col + small_hp.primary_temp_field.shape[1]
 
-    for large_hp in large_hps:
-        large_hp.get_other_temp_field(large_hps)
+    paired_hps = []
+    for small_hp in single_hps:
+        for large_hp in large_hps:
+            if small_hp.pos == large_hp.pos:
+                large_hp.other_temp_field = domain.norm(large_hp.other_temp_field, property="Temperature [C]")
+                small_hp.other_temp_field = domain.norm(small_hp.other_temp_field, property="Temperature [C]")
+                paired_hps.append((small_hp,large_hp))
+
+    all_permutations = itertools.permutations(paired_hps)
+
+    for permutation in all_permutations:
+        #have to reset small_hp and large_hp
+        count = 0
+        for s_hp,l_hp in permutation:
+            count += 1
+            small_hp = deepcopy(s_hp)
+            large_hp = deepcopy(l_hp)
+            #maybe need to norm primary temp field first
+            small_hp.get_other_temp_field(single_hps)
+            large_hp.get_other_temp_field(large_hps)
+            small_hp.input[4] = small_hp.other_temp_field.clone().detach()
+            large_hp.input[4] = large_hp.other_temp_field.clone().detach()
+
+            time_start_run_1hp = time.perf_counter()
+            small_hp.primary_temp_field = small_hp.apply_nn(model_1HP)
+            avg_time_inference_1hp += time.perf_counter() - time_start_run_1hp
+            small_hp.primary_temp_field = domain.reverse_norm(small_hp.primary_temp_field, property="Temperature [C]")
+
+            large_hp.primary_temp_field = large_hp.inputs[4].clone().detach()
+            large_hp.primary_temp_field[start_row:end_row,start_col:end_col] = domain.norm(small_hp.primary_temp_field.clone().detach(),property="Temperature [C]")
+
+            if count == len(permutation):
+                large_hp.save(run_id="-"+run_id, dir=paths.datasets_boxes_prep_path/"large_size",)
+                small_hp.save(run_id="-"+run_id, dir=paths.datasets_boxes_prep_path/"normal_size",)
+            else:
+                large_hp.save(run_id="-"+run_id, dir=paths.datasets_boxes_prep_path/"large_size", alt_label=large_hp.primary_temp_field.clone().detach(),)
+                small_hp.save(run_id="-"+run_id, dir=paths.datasets_boxes_prep_path/"normal_size", alt_label=small_hp.primary_temp_field.clone().detach(),)
+
+
+    return single_hps, avg_time_inference_1hp
+
+    for current in range(len(single_hps) - 1):
+        
+        #first apply nn
+        for hp in single_hps:
+            time_start_run_1hp = time.perf_counter()
+            hp.primary_temp_field = hp.apply_nn(model_1HP)
+            avg_time_inference_1hp += time.perf_counter() - time_start_run_1hp
+            hp.primary_temp_field = domain.reverse_norm(hp.primary_temp_field, property="Temperature [C]")
+        avg_time_inference_1hp /= len(single_hps)
+
+        current_hp = 0
+        for large_hp in large_hps:
+            small_hp = single_hps[current_hp]
+            if small_hp.id != large_hp.id:
+                print("skipped hp due to not matching id (most likely large box outside boundary)")
+                continue
+
+            start_row = large_hp.dist_corner_hp[0] - small_hp.dist_corner_hp[0]
+            end_row = start_row + small_hp.primary_temp_field.shape[0]
+            start_col = large_hp.dist_corner_hp[1] - small_hp.dist_corner_hp[1]
+            end_col = start_col + small_hp.primary_temp_field.shape[1]
+            large_hp.primary_temp_field = large_hp.inputs[4].clone().detach()
+            large_hp.primary_temp_field[start_row:end_row,start_col:end_col] = domain.norm(small_hp.primary_temp_field.clone().detach(),property="Temperature [C]")
+            large_hp.save(run_id="-"+run_id, dir=paths.datasets_boxes_prep_path/"large_size", alt_label=large_hp.primary_temp_field.clone().detach(),)
+            large_hp.other_temp_field = domain.norm(large_hp.other_temp_field, property="Temperature [C]")
+            current += 1
+
+        for large_hp in large_hps:
+            large_hp.get_other_temp_field(large_hps)
+        
+        for hp in single_hps:
+            hp.get_other_temp_field(single_hps)
 
     for large_hp in large_hps:
         large_hp.primary_temp_field = domain.norm(large_hp.primary_temp_field, property="Temperature [C]")
@@ -153,8 +207,6 @@ def prepare_hp_boxes(paths:Paths2HP, model_1HP:UNet, single_hps:List[HeatPumpBox
         if save_bool:
             large_hp.save(run_id=run_id, dir=paths.datasets_boxes_prep_path/"large_size", inputs_all=inputs,)
 
-    for hp in single_hps:
-        hp.get_other_temp_field(single_hps)
 
     for hp in single_hps:
         hp.primary_temp_field = domain.norm(hp.primary_temp_field, property="Temperature [C]")
