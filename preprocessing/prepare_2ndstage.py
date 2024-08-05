@@ -113,6 +113,9 @@ def load_and_prepare_for_2nd_stage(paths: Paths2HP, inputs_1hp: str, run_id: int
 def prepare_hp_boxes(paths:Paths2HP, model_1HP:UNet, single_hps:List[HeatPumpBox], domain:Domain, run_id:int, avg_time_inference_1hp:float=0, save_bool:bool=True):
     hp: HeatPumpBox
 
+    distance_hp_large = tensor([domain.info["PositionHPPrior"][1],33])
+    size_hp_large = tensor([256,64])
+
     for hp in single_hps:
         time_start_run_1hp = time.perf_counter()
         hp.primary_temp_field = hp.apply_nn(model_1HP)
@@ -120,8 +123,6 @@ def prepare_hp_boxes(paths:Paths2HP, model_1HP:UNet, single_hps:List[HeatPumpBox
         hp.primary_temp_field = domain.reverse_norm(hp.primary_temp_field, property="Temperature [C]")
     avg_time_inference_1hp /= len(single_hps)
 
-    distance_hp_large = tensor([domain.info["PositionHPPrior"][1],33])
-    size_hp_large = tensor([256,64])
     large_hps = domain.extract_hp_boxes(size_hp=size_hp_large,distance_hp=distance_hp_large)
     current = 0
     for large_hp in large_hps:
@@ -131,6 +132,7 @@ def prepare_hp_boxes(paths:Paths2HP, model_1HP:UNet, single_hps:List[HeatPumpBox
             continue
 
         #TODO make length more flexible
+        #TODO adjust code for more than 2 heat pumps
         start_row = large_hp.dist_corner_hp[0] - small_hp.dist_corner_hp[0]
         end_row = start_row + small_hp.primary_temp_field.shape[0]
         start_col = large_hp.dist_corner_hp[1] - small_hp.dist_corner_hp[1]
