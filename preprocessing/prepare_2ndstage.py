@@ -41,6 +41,7 @@ def prepare_dataset_for_2nd_stage(paths: Paths2HP, settings:SettingsTraining):
     model_1HP = UNet(in_channels=len(settings.inputs)).float()
     print(paths.model_1hp_path)
     model_1HP.load(paths.model_1hp_path, map_location=settings.device)
+    model_1HP.eval()
     
     ## prepare 2hp dataset for 1st stage
     #print(paths.dataset_1st_prep_path)
@@ -184,7 +185,7 @@ def prepare_hp_boxes(paths:Paths2HP, model_1HP:UNet, single_hps:List[HeatPumpBox
         end_col = start_col + small_hp.primary_temp_field.shape[1]
         large_hp.primary_temp_field = large_hp.inputs[4].clone().detach()
         large_hp.primary_temp_field[start_row:end_row,start_col:end_col] = domain.norm(small_hp.primary_temp_field.clone().detach(),property="Temperature [C]")
-        large_hp.save(run_id="-"+run_id, dir=paths.datasets_boxes_prep_path/"large_size", alt_label=large_hp.primary_temp_field.clone().detach(),)
+        large_hp.save(run_id="-"+run_id, dir=paths.datasets_boxes_prep_path/"1HP", alt_label=large_hp.primary_temp_field.clone().detach(),)
         large_hp.other_temp_field = domain.norm(large_hp.other_temp_field, property="Temperature [C]")
         current_hp += 1
 
