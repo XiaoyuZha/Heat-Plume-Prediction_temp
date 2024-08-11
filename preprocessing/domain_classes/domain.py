@@ -345,7 +345,7 @@ def get_box_corners(pos_hp, size_hp_box, distance_hp_corner, domain_shape, run_n
     #     # TODO rm absolute path
     #     shutil.move(os.path.join(origin_2hp_prep, "Inputs", run_name), os.path.join(origin_2hp_prep, "broken", "Inputs", f"{run_name.split('.')[0]}_hp_pos_outside_domain.pt"))
     #     shutil.move(os.path.join(origin_2hp_prep, "Labels", run_name), os.path.join(origin_2hp_prep, "broken", "Labels", run_name))
-    assert (corner_ll[0] >= 0 and corner_ur[0] < domain_shape[0]), f"HP BOX at {pos_hp} is with x=({corner_ll[0]}, {corner_ur[0]}) in x-direction (0, {domain_shape[0]}) not in domain for {run_name}"
-    assert (corner_ll[1] >= 0 and corner_ur[1] < domain_shape[1]), f"HP BOX at {pos_hp} is with y=({corner_ll[1]}, {corner_ur[1]}) in y-direction (0, {domain_shape[1]}) not in domain for {run_name}"
+    assert (corner_ll[0] >= 0 and corner_ur[0] <= domain_shape[0]), f"HP BOX at {pos_hp} is with x=({corner_ll[0]}, {corner_ur[0]}) in x-direction (0, {domain_shape[0]}) not in domain for {run_name}"
+    assert (corner_ll[1] >= 0 and corner_ur[1] <= domain_shape[1]), f"HP BOX at {pos_hp} is with y=({corner_ll[1]}, {corner_ur[1]}) in y-direction (0, {domain_shape[1]}) not in domain for {run_name}"
 
     return corner_ll, corner_ur

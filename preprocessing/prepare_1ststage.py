@@ -90,6 +90,8 @@ def prepare_dataset(paths: Union[Paths1HP, Paths2HP], settings: SettingsTraining
     total_size = np.array(pflotran_settings["grid"]["size"])
     cell_size = total_size/dims
 
+    print(info)
+
     if info is None: calc = WelfordStatistics()
     tensor_transform = ToTensorTransform()
     output_variables = ["Temperature [C]"]
@@ -417,6 +419,7 @@ def normalize(dataset_path: str, info: dict, total: int = None):
             Total number of files to normalize. Used for tqdm progress bar.
 
     """
+    print(info)
     norm = NormalizeTransform(info)
     dataset_path = pathlib.Path(dataset_path)
     input_path = dataset_path.joinpath("Inputs")
