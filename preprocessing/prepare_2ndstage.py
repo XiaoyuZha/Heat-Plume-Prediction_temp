@@ -43,11 +43,12 @@ def prepare_dataset_for_2nd_stage(paths: Paths2HP, settings:SettingsTraining):
     model_1HP.load(paths.model_1hp_path, map_location=settings.device)
     
     ## prepare 2hp dataset for 1st stage
-    if not os.path.exists(paths.dataset_1st_prep_path):        
-        # norm with data from dataset that NN was trained with!!
-        with open(paths.dataset_model_trained_with_prep_path / "info.yaml", "r") as file:
-            info = yaml.safe_load(file)
-        prepare_dataset(paths, settings, info=info, power2trafo=False) # for using unet on whole domain required: power2trafo=True
+    #print(paths.dataset_1st_prep_path)
+    #if not os.path.exists(paths.dataset_1st_prep_path):        
+            # norm with data from dataset that NN was trained with!!
+    with open(paths.dataset_model_trained_with_prep_path / "info.yaml", "r") as file:
+        info = yaml.safe_load(file)
+    prepare_dataset(paths, settings, info=info, power2trafo=False) # for using unet on whole domain required: power2trafo=True
     print(f"Domain prepared ({paths.dataset_1st_prep_path})")
 
     #model_1HP = UNet(in_channels=len(settings.inputs)).float()
@@ -117,7 +118,7 @@ def prepare_hp_boxes(paths:Paths2HP, model_1HP:UNet, single_hps:List[HeatPumpBox
 
     #TODO make length more flexible
     #TODO adjust code for more than 2 heat pumps
-    distance_hp_large = tensor([domain.info["PositionHPPrior"][1],33])
+    distance_hp_large = tensor([domain.info["PositionHPPrior"][1],31])
     size_hp_large = tensor([256,64])
     large_hps = domain.extract_hp_boxes(size_hp=size_hp_large,distance_hp=distance_hp_large)
 

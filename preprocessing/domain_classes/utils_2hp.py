@@ -18,8 +18,8 @@ def save_config_of_separate_inputs(domain_info, path, name_file="info"):
         "CellsNumber": domain_info["CellsNumber"],
         "CellsNumberPrior": domain_info["CellsNumberPrior"],
         "CellsSize": domain_info["CellsSize"],
+        "PositionLastHP": domain_info["PositionHPPrior"]
     }
-    print(domain_info)
     save_yaml(shortened_infos, path, name_file)
 
 def save_config_of_merged_inputs(separate_info, path, name_file="info"):

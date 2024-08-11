@@ -1,6 +1,6 @@
 default_raw_dir: /scratch/zhangxu/datasets/raw
 datasets_prepared_dir: /scratch/zhangxu/datasets/prepared
-datasets_raw_domain_dir: /scratch/zhangxu/datasets/2hps_demonstrator_copy_of_local
+datasets_raw_domain_dir: /scratch/zhangxu/datasets/raw/1hp_boxes
 datasets_prepared_domain_dir: /home/zhangxu/test_nn/datasets_prepared/2HP_domain
 prepared_1hp_best_models_and_data_dir: /home/zhangxu/test_nn/best
 models_1hp_dir: /home/zhangxu/test_nn/1HP_NN/runs
