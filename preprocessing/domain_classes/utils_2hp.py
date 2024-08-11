@@ -10,8 +10,6 @@ from utils.utils_data import save_yaml
 def save_config_of_separate_inputs(domain_info, path, name_file="info"):
     # ATTENTION! Lots of hardcoding
     shortened_input = domain_info["Inputs"].copy()
-    shortened_input["Temperature prediction (other HPs) [C]"] = domain_info["Labels"]["Temperature [C]"].copy()
-    shortened_input["Temperature prediction (other HPs) [C]"]["index"] = 4
     shortened_infos = {
         "Inputs": shortened_input,
         "Labels": domain_info["Labels"],
