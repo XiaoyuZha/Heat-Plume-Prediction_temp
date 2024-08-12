@@ -6,7 +6,7 @@ from typing import List
 import matplotlib.pyplot as plt
 import numpy as np
 from torch import long as torch_long
-from torch import maximum, ones, save, tensor, unsqueeze, zeros_like, zeros, is_tensor, load, cat, max
+from torch import maximum, ones, save, tensor, unsqueeze, zeros_like, zeros, is_tensor, load, cat, max, min, mean
 
 from postprocessing.visualization import _aligned_colorbar
 from preprocessing.data_stuff.transforms import SignedDistanceTransform
@@ -67,6 +67,8 @@ class HeatPumpBox:
                 # insert at overlapping position in current hp
                 offset2 = maximum(rel_pos, zeros2)
                 end2 = tensor(self.other_temp_field.shape) - maximum(-rel_pos, zeros2)
+                if mean(tmp_2nd_hp) < 0.0008:
+                    tmp_2nd_hp = ones(end[0]- offset[0],end[1]- offset[1]) * min(self.other_temp_field)
                 self.other_temp_field[offset2[0] : end2[0], offset2[1] : end2[1]] = maximum(self.other_temp_field[offset2[0] : end2[0], offset2[1] : end2[1]], tmp_2nd_hp)
 
     def save(self, run_id: str = "", dir: str = "HP-Boxes", additional_inputs: tensor = None, inputs_all: tensor = None, alt_label: tensor = None,):

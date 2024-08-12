@@ -6,7 +6,7 @@ import time
 from typing import List
 
 import yaml
-from torch import Tensor, load, save, stack, unsqueeze, tensor, max
+from torch import Tensor, load, save, stack, unsqueeze, tensor, max, min
 from tqdm.auto import tqdm
 
 from preprocessing.domain_classes.domain import Domain
@@ -20,6 +20,7 @@ from processing.networks.unet import UNet
 from utils.utils_data import SettingsTraining
 import itertools
 from copy import deepcopy
+from postprocessing.visualization import plot_datafields, DataToVisualize
 
 
 def prepare_dataset_for_2nd_stage(paths: Paths2HP, settings:SettingsTraining):
@@ -74,7 +75,7 @@ def prepare_dataset_for_2nd_stage(paths: Paths2HP, settings:SettingsTraining):
         #   hp.save(run_id=run_id+"_alt", dir=paths.datasets_boxes_prep_path, inputs_all=None)
         #print(f"Domain prepared ({paths.datasets_boxes_prep_path})")
         # apply learned NN to predict the heat plumes
-        single_hps, avg_time_inference_1hp = prepare_hp_boxes(paths, model_1HP, single_hps, domain, run_id, avg_time_inference_1hp, save_bool=True)
+        single_hps, avg_time_inference_1hp = prepare_hp_boxes(paths, model_1HP, single_hps, domain, run_id,settings, avg_time_inference_1hp, save_bool=True)
         
     time_end = time.perf_counter()
     avg_inference_times = avg_time_inference_1hp / len(list_runs)
@@ -114,7 +115,7 @@ def load_and_prepare_for_2nd_stage(paths: Paths2HP, inputs_1hp: str, run_id: int
     # TODO replace with loading from file  - requires saving the position of a hp within its domain and the connection domain - single hps  
     return domain, single_hps
 
-def prepare_hp_boxes(paths:Paths2HP, model_1HP:UNet, single_hps:List[HeatPumpBox], domain:Domain, run_id:int, avg_time_inference_1hp:float=0, save_bool:bool=True):
+def prepare_hp_boxes(paths:Paths2HP, model_1HP:UNet, single_hps:List[HeatPumpBox], domain:Domain, run_id:int,settings:SettingsTraining, avg_time_inference_1hp:float=0, save_bool:bool=True):
     hp: HeatPumpBox
 
     #TODO make length more flexible
@@ -169,7 +170,7 @@ def prepare_hp_boxes(paths:Paths2HP, model_1HP:UNet, single_hps:List[HeatPumpBox
         time_start_run_1hp = time.perf_counter()
         hp.primary_temp_field = hp.apply_nn(model_1HP)
         avg_time_inference_1hp += time.perf_counter() - time_start_run_1hp
-        hp.primary_temp_field = domain.reverse_norm(hp.primary_temp_field, property="Temperature [C]")
+        #hp.primary_temp_field = domain.reverse_norm(hp.primary_temp_field, property="Temperature [C]")
     avg_time_inference_1hp /= len(single_hps)
 
     current_hp = 0
@@ -184,13 +185,14 @@ def prepare_hp_boxes(paths:Paths2HP, model_1HP:UNet, single_hps:List[HeatPumpBox
         start_col = large_hp.dist_corner_hp[1] - small_hp.dist_corner_hp[1]
         end_col = start_col + small_hp.primary_temp_field.shape[1]
         large_hp.primary_temp_field = large_hp.inputs[4].clone().detach()
-        large_hp.primary_temp_field[start_row:end_row,start_col:end_col] = domain.norm(small_hp.primary_temp_field.clone().detach(),property="Temperature [C]")
+        large_hp.primary_temp_field[start_row:end_row,start_col:end_col] = small_hp.primary_temp_field.clone().detach()
         large_hp.save(run_id="-"+run_id, dir=paths.datasets_boxes_prep_path/"1HP", alt_label=large_hp.primary_temp_field.clone().detach(),)
         large_hp.other_temp_field = domain.norm(large_hp.other_temp_field, property="Temperature [C]")
         current_hp += 1
 
     for large_hp in large_hps:
         large_hp.get_other_temp_field(large_hps)
+
     
     for hp in single_hps:
         hp.get_other_temp_field(single_hps)
@@ -199,6 +201,15 @@ def prepare_hp_boxes(paths:Paths2HP, model_1HP:UNet, single_hps:List[HeatPumpBox
         large_hp.primary_temp_field = domain.norm(large_hp.primary_temp_field, property="Temperature [C]")
         #large_hp.other_temp_field = domain.norm(large_hp.other_temp_field, property="Temperature [C]")
         inputs = stack([large_hp.inputs[0],large_hp.inputs[1],large_hp.inputs[2],large_hp.inputs[3], large_hp.other_temp_field])
+        dict_to_plot = {}
+        pathlib.Path(settings.destination / run_id).mkdir(parents=True, exist_ok=True)
+        name_pic = settings.destination / run_id / str(large_hp.id)
+        settings_pic = {"format": "png",
+                "dpi": 600,}  
+
+        dict_to_plot[f"input{run_id}"] = DataToVisualize(inputs[4], f"input {run_id}")
+        dict_to_plot[f"label{run_id}"] = DataToVisualize(large_hp.label.clone().detach().squeeze(), f"label {run_id}")
+        plot_datafields(dict_to_plot, name_pic, settings_pic)
         if save_bool:
             large_hp.save(run_id=run_id, dir=paths.datasets_boxes_prep_path/"large_size", inputs_all=inputs,)
 
