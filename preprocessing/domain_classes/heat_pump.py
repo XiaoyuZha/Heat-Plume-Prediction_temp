@@ -21,7 +21,7 @@ class HeatPumpBox:
         self.dist_corner_hp: tensor = dist_corner_hp.to(dtype=torch_long)  # distance from corner of heat pump to corner of box
         self.inputs: tensor = inputs.to(device)  # extracted from large domain
         self.inputs_names: List[str] = names
-        self.primary_temp_field: tensor = (None)  #temperature field, calculated by 1HP-NN
+        self.primary_temp_field: tensor = (ones(self.inputs[0].shape) * 10.6).to(device)  #temperature field, calculated by 1HP-NN
         self.other_temp_field: tensor = (ones(self.inputs[0].shape) * 10.6).to(device)  # input for 2HP-NN
         self.output: tensor = (None)  # temperature field
         self.label = label.to(device)
@@ -67,7 +67,8 @@ class HeatPumpBox:
                 # insert at overlapping position in current hp
                 offset2 = maximum(rel_pos, zeros2)
                 end2 = tensor(self.other_temp_field.shape) - maximum(-rel_pos, zeros2)
-                if mean(tmp_2nd_hp) < 0.0008:
+                if mean(tmp_2nd_hp) < 0.001:
+                    #Rundungsfehler für schönere Datensätze
                     tmp_2nd_hp = ones(end[0]- offset[0],end[1]- offset[1]) * min(self.other_temp_field)
                 self.other_temp_field[offset2[0] : end2[0], offset2[1] : end2[1]] = maximum(self.other_temp_field[offset2[0] : end2[0], offset2[1] : end2[1]], tmp_2nd_hp)
 

@@ -6,7 +6,7 @@ import time
 from typing import List
 
 import yaml
-from torch import Tensor, load, save, stack, unsqueeze, tensor, max, min
+from torch import Tensor, load, save, stack, unsqueeze, tensor, max, min, equal, mean
 from tqdm.auto import tqdm
 
 from preprocessing.domain_classes.domain import Domain
@@ -64,6 +64,8 @@ def prepare_dataset_for_2nd_stage(paths: Paths2HP, settings:SettingsTraining):
         # for each run, load domain and 1hp-boxes
         run_id = f'{run_file.split(".")[0]}_'
         domain = Domain(paths.dataset_1st_prep_path, stitching_method="max", file_name=run_file)
+        if mean(domain.prediction) > 10:
+            domain.prediction = domain.norm(domain.prediction.clone().detach(), property="Temperature [C]")
         ## generate 1hp-boxes and extract information like perm and ids etc.
         if domain.skip_datapoint:
             logging.warning(f"Skipping {run_id}")
@@ -120,106 +122,182 @@ def prepare_hp_boxes(paths:Paths2HP, model_1HP:UNet, single_hps:List[HeatPumpBox
 
     #TODO make length more flexible
     #TODO adjust code for more than 2 heat pumps
+    positions = []
+    for hp in single_hps:
+        positions.append(hp.pos)
+    
+    settings_pic = {"format": "png",
+        "dpi": 600,}  
+    relevant_permutations = []
+    for index in range(len(positions)):
+        relevant_permutations.append(deepcopy(positions))
+        positions[index], positions[-1] = positions[-1], positions[index]
+
+    current_perm = 0
+    for permutation in relevant_permutations:
+        count = 0
+        hps_copy = deepcopy(single_hps)
+        for hp in hps_copy:
+            hp.primary_temp_field = domain.norm(hp.primary_temp_field, property="Temperature [C]")
+            hp.other_temp_field = domain.norm(hp.other_temp_field, property="Temperature [C]")
+
+        for position in permutation:
+            for hp in hps_copy:
+                if equal(hp.pos,position):
+                    current_hp = hp
+
+            if count > 0:
+                current_hp.get_other_temp_field(hps_copy)
+                current_hp.inputs[4] = current_hp.other_temp_field.clone().detach()
+            
+            time_start_run_1hp = time.perf_counter()
+            current_hp.primary_temp_field = current_hp.apply_nn(model_1HP)
+            avg_time_inference_1hp += time.perf_counter() - time_start_run_1hp
+
+            dict_to_plot = {}
+            pathlib.Path(settings.destination / run_id).mkdir(parents=True, exist_ok=True)
+            name_id = "perm_" + str(current_perm) + "_hp_" +str(count)
+            name_pic = settings.destination / run_id / name_id
+
+            dict_to_plot[f"input{run_id}{count}"] = DataToVisualize(domain.reverse_norm(current_hp.inputs[4].clone().detach(), property="Temperature [C]"), f"input {run_id}_{count}")
+
+            if count == len(permutation)-1:
+                dict_to_plot[f"label{run_id}{count}"] = DataToVisualize(domain.reverse_norm(current_hp.label.clone().detach().squeeze(), property="Temperature [C]"), f"label {run_id}_{count}")
+                current_hp.save(run_id=run_id+str(current_perm), dir=paths.datasets_boxes_prep_path/f"{count+1}HP",)
+            else:
+                dict_to_plot[f"label{run_id}{count}"] = DataToVisualize(domain.reverse_norm(current_hp.primary_temp_field.clone().detach().squeeze(), property="Temperature [C]"), f"label {run_id}_{count}")
+                current_hp.save(run_id=run_id+str(current_perm), dir=paths.datasets_boxes_prep_path/f"{count+1}HP", alt_label=current_hp.primary_temp_field.clone().detach(),)
+            count = count + 1
+            plot_datafields(dict_to_plot, name_pic, settings_pic)
+        current_perm = current_perm + 1 
+    
+    return single_hps, avg_time_inference_1hp
+
+
+def prepare_hp_boxes_old(paths:Paths2HP, model_1HP:UNet, single_hps:List[HeatPumpBox], domain:Domain, run_id:int,settings:SettingsTraining, avg_time_inference_1hp:float=0, save_bool:bool=True):
+    hp: HeatPumpBox
+
+    #TODO make length more flexible
+    #TODO adjust code for more than 2 heat pumps
     distance_hp_large = tensor([domain.info["PositionHPPrior"][1],31])
     size_hp_large = tensor([256,64])
     large_hps = domain.extract_hp_boxes(size_hp=size_hp_large,distance_hp=distance_hp_large)
+    start_row = large_hps[0].dist_corner_hp[0] - single_hps[0].dist_corner_hp[0]
+    end_row = start_row + single_hps[0].primary_temp_field.shape[0]
+    start_col = large_hps[0].dist_corner_hp[1] - single_hps[0].dist_corner_hp[1]
+    end_col = start_col + single_hps[0].primary_temp_field.shape[1]
 
-    # paired_hps = []
-    # for small_hp in single_hps:
-    #     for large_hp in large_hps:
-    #         if small_hp.pos == large_hp.pos:
-    #             large_hp.other_temp_field = domain.norm(large_hp.other_temp_field, property="Temperature [C]")
-    #             small_hp.other_temp_field = domain.norm(small_hp.other_temp_field, property="Temperature [C]")
-    #             paired_hps.append((small_hp,large_hp))
+    paired_hps = []
+    for small_hp in single_hps:
+        for large_hp in large_hps:
+            if equal(small_hp.pos,large_hp.pos):
+                large_hp.other_temp_field = domain.norm(large_hp.other_temp_field, property="Temperature [C]")
+                small_hp.other_temp_field = domain.norm(small_hp.other_temp_field, property="Temperature [C]")
+                large_hp.primary_temp_field = domain.norm(large_hp.primary_temp_field, property="Temperature [C]")
+                small_hp.primary_temp_field = domain.norm(small_hp.primary_temp_field, property="Temperature [C]")
+                paired_hps.append((small_hp,large_hp))
 
-    # all_permutations = itertools.permutations(paired_hps)
+    all_permutations = itertools.permutations(paired_hps)
 
-    # for permutation in all_permutations:
-    #     #have to reset small_hp and large_hp
-    #     count = 0
-    #     for s_hp,l_hp in permutation:
-    #         count += 1
-    #         small_hp = deepcopy(s_hp)
-    #         large_hp = deepcopy(l_hp)
-    #         #maybe need to norm primary temp field first
-    #         small_hp.get_other_temp_field(single_hps)
-    #         large_hp.get_other_temp_field(large_hps)
-    #         small_hp.input[4] = small_hp.other_temp_field.clone().detach()
-    #         large_hp.input[4] = large_hp.other_temp_field.clone().detach()
+    for permutation in all_permutations:
+        #have to reset small_hp and large_hp
+        count = 0
+        s_hps = deepcopy(single_hps)
+        l_hps = deepcopy(large_hps)
+        for s_hp,l_hp in permutation:
+            count += 1
+            small_hp = deepcopy(s_hp)
+            large_hp = deepcopy(l_hp)
+            #maybe need to norm primary temp field first
+            small_hp.get_other_temp_field(s_hps)
+            large_hp.get_other_temp_field(l_hps)
+            small_hp.inputs[4] = small_hp.other_temp_field.clone().detach()
+            large_hp.inputs[4] = large_hp.other_temp_field.clone().detach()
 
-    #         time_start_run_1hp = time.perf_counter()
-    #         small_hp.primary_temp_field = small_hp.apply_nn(model_1HP)
-    #         avg_time_inference_1hp += time.perf_counter() - time_start_run_1hp
-    #         small_hp.primary_temp_field = domain.reverse_norm(small_hp.primary_temp_field, property="Temperature [C]")
+            time_start_run_1hp = time.perf_counter()
+            small_hp.primary_temp_field = small_hp.apply_nn(model_1HP)
+            avg_time_inference_1hp += time.perf_counter() - time_start_run_1hp
+            small_hp.primary_temp_field = domain.reverse_norm(small_hp.primary_temp_field, property="Temperature [C]")
 
-    #         large_hp.primary_temp_field = large_hp.inputs[4].clone().detach()
-    #         large_hp.primary_temp_field[start_row:end_row,start_col:end_col] = domain.norm(small_hp.primary_temp_field.clone().detach(),property="Temperature [C]")
+            large_hp.primary_temp_field = large_hp.inputs[4].clone().detach()
+            large_hp.primary_temp_field[start_row:end_row,start_col:end_col] = domain.norm(small_hp.primary_temp_field.clone().detach(),property="Temperature [C]")
+            
+            dict_to_plot = {}
+            pathlib.Path(settings.destination / run_id).mkdir(parents=True, exist_ok=True)
+            name_pic = settings.destination / run_id / str(large_hp.id)
+            settings_pic = {"format": "png",
+                    "dpi": 600,}  
 
-    #         if count == len(permutation):
-    #             large_hp.save(run_id="-"+run_id, dir=paths.datasets_boxes_prep_path/"large_size",)
-    #             small_hp.save(run_id="-"+run_id, dir=paths.datasets_boxes_prep_path/"normal_size",)
-    #         else:
-    #             large_hp.save(run_id="-"+run_id, dir=paths.datasets_boxes_prep_path/"large_size", alt_label=large_hp.primary_temp_field.clone().detach(),)
-    #             small_hp.save(run_id="-"+run_id, dir=paths.datasets_boxes_prep_path/"normal_size", alt_label=small_hp.primary_temp_field.clone().detach(),)
+            dict_to_plot[f"input{run_id}{count}"] = DataToVisualize(large_hp.inputs[4], f"input {run_id}_{count}")
+            if count == len(permutation):
+                dict_to_plot[f"label{run_id}{count}"] = DataToVisualize(large_hp.label.clone().detach().squeeze(), f"label {run_id}_{count}")
+                large_hp.save(run_id="-"+run_id, dir=paths.datasets_boxes_prep_path/f"large_{count}HP",)
+                small_hp.save(run_id="-"+run_id, dir=paths.datasets_boxes_prep_path/f"small_{count}HP",)
+            else:
+                dict_to_plot[f"label{run_id}{count}"] = DataToVisualize(large_hp.primary_temp_field.clone().detach(), f"label {run_id}_{count}")
+                large_hp.save(run_id="-"+run_id, dir=paths.datasets_boxes_prep_path/f"large_{count}HP", alt_label=large_hp.primary_temp_field.clone().detach(),)
+                small_hp.save(run_id="-"+run_id, dir=paths.datasets_boxes_prep_path/f"small_{count}HP", alt_label=small_hp.primary_temp_field.clone().detach(),)
+            
+            plot_datafields(dict_to_plot, name_pic, settings_pic)
 
 
 
         
     #first apply nn
-    for hp in single_hps:
-        time_start_run_1hp = time.perf_counter()
-        hp.primary_temp_field = hp.apply_nn(model_1HP)
-        avg_time_inference_1hp += time.perf_counter() - time_start_run_1hp
-        #hp.primary_temp_field = domain.reverse_norm(hp.primary_temp_field, property="Temperature [C]")
-    avg_time_inference_1hp /= len(single_hps)
+    # '    for hp in single_hps:
+    #         time_start_run_1hp = time.perf_counter()
+    #         hp.primary_temp_field = hp.apply_nn(model_1HP)
+    #         avg_time_inference_1hp += time.perf_counter() - time_start_run_1hp
+    #         #hp.primary_temp_field = domain.reverse_norm(hp.primary_temp_field, property="Temperature [C]")
+    #     avg_time_inference_1hp /= len(single_hps)
 
-    current_hp = 0
-    for large_hp in large_hps:
-        small_hp = single_hps[current_hp]
-        if small_hp.id != large_hp.id:
-            print("skipped hp due to not matching id (most likely large box outside boundary)")
-            continue
+    #     current_hp = 0
+    #     for large_hp in large_hps:
+    #         small_hp = single_hps[current_hp]
+    #         if small_hp.id != large_hp.id:
+    #             print("skipped hp due to not matching id (most likely large box outside boundary)")
+    #             continue
 
-        start_row = large_hp.dist_corner_hp[0] - small_hp.dist_corner_hp[0]
-        end_row = start_row + small_hp.primary_temp_field.shape[0]
-        start_col = large_hp.dist_corner_hp[1] - small_hp.dist_corner_hp[1]
-        end_col = start_col + small_hp.primary_temp_field.shape[1]
-        large_hp.primary_temp_field = large_hp.inputs[4].clone().detach()
-        large_hp.primary_temp_field[start_row:end_row,start_col:end_col] = small_hp.primary_temp_field.clone().detach()
-        large_hp.save(run_id="-"+run_id, dir=paths.datasets_boxes_prep_path/"1HP", alt_label=large_hp.primary_temp_field.clone().detach(),)
-        large_hp.other_temp_field = domain.norm(large_hp.other_temp_field, property="Temperature [C]")
-        current_hp += 1
+    #         start_row = large_hp.dist_corner_hp[0] - small_hp.dist_corner_hp[0]
+    #         end_row = start_row + small_hp.primary_temp_field.shape[0]
+    #         start_col = large_hp.dist_corner_hp[1] - small_hp.dist_corner_hp[1]
+    #         end_col = start_col + small_hp.primary_temp_field.shape[1]
+    #         large_hp.primary_temp_field = large_hp.inputs[4].clone().detach()
+    #         large_hp.primary_temp_field[start_row:end_row,start_col:end_col] = small_hp.primary_temp_field.clone().detach()
+    #         large_hp.save(run_id="-"+run_id, dir=paths.datasets_boxes_prep_path/"1HP", alt_label=large_hp.primary_temp_field.clone().detach(),)
+    #         large_hp.other_temp_field = domain.norm(large_hp.other_temp_field, property="Temperature [C]")
+    #         current_hp += 1
 
-    for large_hp in large_hps:
-        large_hp.get_other_temp_field(large_hps)
+    #     for large_hp in large_hps:
+    #         large_hp.get_other_temp_field(large_hps)
 
-    
-    for hp in single_hps:
-        hp.get_other_temp_field(single_hps)
+        
+    #     for hp in single_hps:
+    #         hp.get_other_temp_field(single_hps)
 
-    for large_hp in large_hps:
-        large_hp.primary_temp_field = domain.norm(large_hp.primary_temp_field, property="Temperature [C]")
-        #large_hp.other_temp_field = domain.norm(large_hp.other_temp_field, property="Temperature [C]")
-        inputs = stack([large_hp.inputs[0],large_hp.inputs[1],large_hp.inputs[2],large_hp.inputs[3], large_hp.other_temp_field])
-        dict_to_plot = {}
-        pathlib.Path(settings.destination / run_id).mkdir(parents=True, exist_ok=True)
-        name_pic = settings.destination / run_id / str(large_hp.id)
-        settings_pic = {"format": "png",
-                "dpi": 600,}  
+    #     for large_hp in large_hps:
+    #         large_hp.primary_temp_field = domain.norm(large_hp.primary_temp_field, property="Temperature [C]")
+    #         #large_hp.other_temp_field = domain.norm(large_hp.other_temp_field, property="Temperature [C]")
+    #         inputs = stack([large_hp.inputs[0],large_hp.inputs[1],large_hp.inputs[2],large_hp.inputs[3], large_hp.other_temp_field])
+    #         dict_to_plot = {}
+    #         pathlib.Path(settings.destination / run_id).mkdir(parents=True, exist_ok=True)
+    #         name_pic = settings.destination / run_id / str(large_hp.id)
+    #         settings_pic = {"format": "png",
+    #                 "dpi": 600,}  
 
-        dict_to_plot[f"input{run_id}"] = DataToVisualize(inputs[4], f"input {run_id}")
-        dict_to_plot[f"label{run_id}"] = DataToVisualize(large_hp.label.clone().detach().squeeze(), f"label {run_id}")
-        plot_datafields(dict_to_plot, name_pic, settings_pic)
-        if save_bool:
-            large_hp.save(run_id=run_id, dir=paths.datasets_boxes_prep_path/"large_size", inputs_all=inputs,)
+    #         dict_to_plot[f"input{run_id}"] = DataToVisualize(inputs[4], f"input {run_id}")
+    #         dict_to_plot[f"label{run_id}"] = DataToVisualize(large_hp.label.clone().detach().squeeze(), f"label {run_id}")
+    #         plot_datafields(dict_to_plot, name_pic, settings_pic)
+    #         if save_bool:
+    #             large_hp.save(run_id=run_id, dir=paths.datasets_boxes_prep_path/"large_size", inputs_all=inputs,)
 
 
-    for hp in single_hps:
-        hp.primary_temp_field = domain.norm(hp.primary_temp_field, property="Temperature [C]")
-        hp.other_temp_field = domain.norm(hp.other_temp_field, property="Temperature [C]")
-        inputs = stack([hp.inputs[0],hp.inputs[1],hp.inputs[2],hp.inputs[3], hp.other_temp_field])
-        if save_bool:
-            hp.save(run_id=run_id, dir=paths.datasets_boxes_prep_path/"normal_size", inputs_all=inputs,)
+    #     for hp in single_hps:
+    #         hp.primary_temp_field = domain.norm(hp.primary_temp_field, property="Temperature [C]")
+    #         hp.other_temp_field = domain.norm(hp.other_temp_field, property="Temperature [C]")
+    #         inputs = stack([hp.inputs[0],hp.inputs[1],hp.inputs[2],hp.inputs[3], hp.other_temp_field])
+    #         if save_bool:
+    #             hp.save(run_id=run_id, dir=paths.datasets_boxes_prep_path/"normal_size", inputs_'all=inputs,)
     return single_hps, avg_time_inference_1hp
 
 def merge_inputs_for_2HPNN(path_separate_inputs:pathlib.Path, path_merged_inputs:pathlib.Path, stitching_method:str="max"):
