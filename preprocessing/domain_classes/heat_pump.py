@@ -68,7 +68,7 @@ class HeatPumpBox:
                 offset2 = maximum(rel_pos, zeros2)
                 end2 = tensor(self.other_temp_field.shape) - maximum(-rel_pos, zeros2)
                 if mean(tmp_2nd_hp) < 0.001:
-                    #Rundungsfehler für schönere Datensätze
+                    # account for rounding errors for prettier datapoints 
                     tmp_2nd_hp = ones(end[0]- offset[0],end[1]- offset[1]) * min(self.other_temp_field)
                 self.other_temp_field[offset2[0] : end2[0], offset2[1] : end2[1]] = maximum(self.other_temp_field[offset2[0] : end2[0], offset2[1] : end2[1]], tmp_2nd_hp)
 

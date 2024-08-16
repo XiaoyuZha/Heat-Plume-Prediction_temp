@@ -176,11 +176,13 @@ class Domain:
             pos_hp = pos_hps[idx]
             corner_ll = (pos_hp - distance_hp_corner) # corner lower left
             corner_ur = (pos_hp + size_hp_box - distance_hp_corner)
+            # if box is completely in domain
             if corner_ll[0] >= 0 and corner_ll[1] >= 0 and corner_ur[0] <= self.size[0] and corner_ur[1] <= self.size[1]:
                 tmp_input = self.inputs[:, corner_ll[0] : corner_ur[0], corner_ll[1] : corner_ur[1]].detach().clone()
                 tmp_input[4] = self.prediction[corner_ll[0] : corner_ur[0], corner_ll[1] : corner_ur[1]].clone().detach()
                 tmp_label = self.label[:, corner_ll[0] : corner_ur[0], corner_ll[1] : corner_ur[1]].detach().clone()
             else:
+                # get overlapping part
                 offset_ll = [0,0]
                 for i in range(len(corner_ll)):
                     if corner_ll[i] < 0:
@@ -193,13 +195,14 @@ class Domain:
                         corner_ur[i] = self.size[i] - 0
                 part_input = self.inputs[:, corner_ll[0] : corner_ur[0], corner_ll[1] : corner_ur[1]].detach().clone()
                 part_label = self.label[:, corner_ll[0] : corner_ur[0], corner_ll[1] : corner_ur[1]].detach().clone()
+                # init box with desired shape, set value to min value of overlapping domain
                 tmp_input = zeros(part_input.shape[0],size_hp_box[0],size_hp_box[1])
-                print(self.size[0] - offset_ur[0])
                 for input in range(part_input.shape[0]):
                     tmp_input[input] = ones(size_hp_box[0],size_hp_box[1]) * min(part_input[input]).item()
                 tmp_label = zeros(part_label.shape[0],size_hp_box[0],size_hp_box[1])
                 for label in range(part_label.shape[0]):
                     tmp_label[label] = ones(size_hp_box[0],size_hp_box[1]) * min(part_label[label]).item()
+                # overwrite box with corresponding overlap
                 if (offset_ll == [0,0]):
                     tmp_input[:,  : size_hp_box[0] - offset_ur[0], : size_hp_box[1] - offset_ur[1]] = part_input.clone().detach()
                     tmp_label[:, : size_hp_box[0] - offset_ur[0], : size_hp_box[1] - offset_ur[1]] = part_label.clone().detach()
