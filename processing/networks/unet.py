@@ -7,12 +7,11 @@ from processing.diff_conv2d.layers import DiffConv2dLayer
 
 
 class UNet(nn.Module):
-    def __init__(self, in_channels=2, out_channels=1, init_features=16, depth=2, kernel_size=5):
+    def __init__(self, in_channels=2, out_channels=1, init_features=16, depth=2, kernel_size=5, padding_mode="zeros"):
         super().__init__()
         self.features = init_features
         self.depth = depth
-        self.kernel_size = kernel_size
-        padding_mode =  "circular"            
+        self.kernel_size = kernel_size          
         self.encoders = nn.ModuleList()
         self.pools = nn.ModuleList()
         for _ in range(depth):
@@ -55,7 +54,7 @@ class UNet(nn.Module):
                 out_channels=features,
                 kernel_size=kernel_size,
                 padding="same",
-                # padding_mode=padding_mode,
+                padding_mode=padding_mode,
                 bias=True,
             ),
             nn.ReLU(inplace=True),      
@@ -65,7 +64,7 @@ class UNet(nn.Module):
                 out_channels=features,
                 kernel_size=kernel_size,
                 padding="same",
-                # padding_mode=padding_mode,
+                padding_mode=padding_mode,
                 bias=True,
             ),
             nn.BatchNorm2d(num_features=features),
@@ -76,7 +75,7 @@ class UNet(nn.Module):
                 out_channels=features,
                 kernel_size=kernel_size,
                 padding="same",
-                # padding_mode=padding_mode,
+                padding_mode=padding_mode,
                 bias=True,
             ),        
             nn.ReLU(inplace=True),
