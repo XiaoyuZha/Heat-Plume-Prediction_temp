@@ -25,6 +25,8 @@ from preprocessing.prepare import prepare_data_and_paths
 from preprocessing.prepare_allin1 import preprocessing_allin1
 from processing.networks.encoder import Encoder
 from processing.networks.unet import UNet
+from processing.networks.unetRectKernel import UNetRectKernel
+from processing.networks.unetParallel import UNetParallel
 from processing.networks.unetVariants import UNetHalfPad, UNetHalfPad2
 from processing.solver import Solver
 from utils.utils_data import SettingsTraining
@@ -107,6 +109,10 @@ def run(settings: SettingsTraining, settings_val: SettingsTraining = None, setti
         model = UNet(in_channels=input_channels).float()
     elif settings.problem in ["extend2"]:
         model = UNetHalfPad2(in_channels=input_channels).float()
+    elif settings.problem == "parallel":
+        model = UNetParallel(in_channels=input_channels).float()
+    elif settings.problem == "rect":
+        model = UNetRectKernel(in_channels=input_channels).float()
         # model = Encoder(in_channels=input_channels).float()
 
     if settings.case in ["test", "finetune"]:
@@ -212,7 +218,7 @@ if __name__ == "__main__":
     parser.add_argument("--case_2hp", type=bool, default=False)
     parser.add_argument("--visualize", type=bool, default=False)
     parser.add_argument("--save_inference", type=bool, default=False)
-    parser.add_argument("--problem", type=str, choices=["2stages", "allin1", "extend1", "extend2",], default="allin1")
+    parser.add_argument("--problem", type=str, choices=["2stages", "allin1", "extend1", "extend2","parallel","rect"], default="allin1")
     parser.add_argument("--notes", type=str, default="")
     parser.add_argument("--len_box", type=int, default=64) # for extend:256
     parser.add_argument("--skip_per_dir", type=int, default=32)

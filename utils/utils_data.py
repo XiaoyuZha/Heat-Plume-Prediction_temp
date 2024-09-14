@@ -51,7 +51,7 @@ class SettingsTraining:
     
     def __post_init__(self):
         if self.case_2hp:
-            assert self.problem == "2stages", "2nd stage is only possible with 2stages problem"
+            assert self.problem in ["2stages","parallel","rect"], "2nd stage is only possible with 2stages problem"
         if self.case in ["finetune", "test"]:
             assert self.model is not None, "Path to model is not defined"
             assert self.model != "runs/default", "Please specify model path for testing or finetuning"

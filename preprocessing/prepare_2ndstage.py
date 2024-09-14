@@ -17,6 +17,8 @@ from preprocessing.domain_classes.utils_2hp import (
 from preprocessing.prepare_1ststage import prepare_dataset
 from preprocessing.prepare_paths import Paths2HP
 from processing.networks.unet import UNet
+from processing.networks.unetRectKernel import UNetRectKernel
+from processing.networks.unetParallel import UNetParallel
 from utils.utils_data import SettingsTraining
 import itertools
 from copy import deepcopy
@@ -39,7 +41,12 @@ def prepare_dataset_for_2nd_stage(paths: Paths2HP, settings:SettingsTraining):
 # prepare domain dataset if not yet done
     ## load model from 1st stage
     time_start_prep_domain = time.perf_counter()
-    model_1HP = UNet(in_channels=len(settings.inputs)).float()
+    if settings.problem == "2stages":
+        model_1HP = UNet(in_channels=len(settings.inputs)).float()
+    elif settings.problem == "rect":
+        model_1HP = UNetRectKernel(in_channels=len(settings.inputs)).float()
+    elif settings.problem == "parallel":
+        model_1HP = UNetParallel(in_channels=len(settings.inputs)).float()
     print(paths.model_1hp_path)
     model_1HP.load(paths.model_1hp_path, map_location=settings.device)
     model_1HP.eval()
