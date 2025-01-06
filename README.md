@@ -44,22 +44,22 @@
      ```
      python main.py --dataset_prep 12HP_2500dp --epoch 8000 --architecture quad --inputs gksit --visualize True --device cuda:0 --destination unet_quad
      ```
+     
+## Generating prepared dataset with multiple heat pumps:
+- you need the model in models_1hp_dir (paths.yaml) and the dataset in default_raw_dir (paths.yaml)
+- the images of the dataset end up in `runs/2hpnn`, the resulting dataset in datasets_prepared_dir_2hp (paths.yaml)
+- execute
+```
+ python main.py --dataset_raw 5HP --architecture 2stages --inputs gksit --model unet_para_f64_d5_k4_2500dp --visualize True --case prep_xhp --destination 5hp_dataset --device cpu
+```
 
 ## Iterative application:
 - for iterative application you need the model in models_1hp_dir (paths.yaml)  and the dataset in default_raw_dir (paths.yaml)
 - ensure that the model parameters are the same in e.g. networks/unet.py 
 - execute
   ```
-  python main.py --dataset_raw 5HP --case iterative --model unet_stand --architecture 2stages --inputs gksit --destination seq_5hp_large
+  python main.py --dataset_raw 5HP --case iterative --model unet_para_f64_d5_k4_2500dp --architecture parallel --inputs gksit --destination seq_5hp_large
   ```
-
-## Generating prepared dataset with multiple heat pumps:
-- you need the model in models_1hp_dir (paths.yaml) and the dataset in default_raw_dir (paths.yaml)
-- the images of the dataset end up in `runs/2hpnn`, the resulting dataset in datasets_prepared_dir_2hp (paths.yaml)
-- execute
-```
- python main.py --dataset_raw 5HP --architecture 2stages --inputs gksit --model unet_large_tuned --visualize True --case prep_xhp --destination 5hp_dataset --device cpu
-```
 
 ## Finding the results:
 - resulting model (`model.pt`) + normalization parameters (info.yaml) used can be found in `runs/PROBLEM/DESTINATION` with `PROBLEM` in [1hpnn, 2hpnn] and `DESTINATION` being the user defined or default name in the call of main.py
