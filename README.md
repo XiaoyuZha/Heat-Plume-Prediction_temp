@@ -11,7 +11,6 @@
     datasets_prepared_dir: /scratch/zhangxu/datasets/prepared # where the prepared data is stored
     datasets_raw_domain_dir: /scratch/zhangxu/datasets/raw
     datasets_prepared_domain_dir: /home/zhangxu/test_nn/datasets_prepared/2HP_domain
-    prepared_1hp_best_models_and_data_dir: /home/zhangxu/test_nn/best
     models_1hp_dir: /home/zhangxu/test_nn/1HP_NN/runs
     models_2hp_dir: /home/zhangxu/test_nn/1HP_NN/runs/2hpnn
     datasets_prepared_dir_2hp: /scratch/zhangxu/datasets/prepared/2HP_boxes
