@@ -50,7 +50,7 @@
 - the images of the dataset end up in `runs/2hpnn`, the resulting dataset in datasets_prepared_dir_2hp (paths.yaml)
 - execute
 ```
- python main.py --dataset_raw 5HP --architecture 2stages --inputs gksit --model unet_para_f64_d5_k4_2500dp --visualize True --case prep_xhp --destination 5hp_dataset --device cpu
+ python main.py --dataset_raw 5HP --architecture parallel --inputs gksit --model unet_para_f64_d5_k4_2500dp --visualize True --case prepare --destination 5hp_dataset --device cpu
 ```
 
 ## Iterative application:
